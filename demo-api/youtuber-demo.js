@@ -29,8 +29,11 @@ db.set(++idx, youtuber3);
 
 app.get("/youtubers", (req, res) => {
   let youtubers = {};
-  db.forEach((val, key) => (youtubers[key] = val));
-  res.json(youtubers);
+
+  if (db.size !== 0) {
+    db.forEach((val, key) => (youtubers[key] = val));
+    res.json(youtubers);
+  } else res.status(404).json({ message: "조회할 유튜버가 없습니다." });
 });
 
 app.get("/youtubers/:id", function (req, res) {
@@ -38,17 +41,19 @@ app.get("/youtubers/:id", function (req, res) {
   id = parseInt(id);
   const youtuber = db.get(id);
 
-  if (!youtuber) res.json({ message: "정보없음" });
-  else res.json(youtuber);
+  if (youtuber) res.json(youtuber);
+  else res.status(404).json({ message: "유튜버 정보없음" });
 });
 
 app.use(express.json()); //http 외 모듈인 '미들웨어':json 설정
 app.post("/youtubers", (req, res) => {
-  //Map(db)에 저장(put)
-  db.set(++idx, req.body);
-  res.json({
-    message: `${req.body.channelTitle}님, 유튜버 등록이 완료되었습니다!`, //db.get(idx).channelTitle
-  });
+  if (req.body.channelTitle) {
+    //Map(db)에 저장(put)
+    db.set(++idx, req.body);
+    res.status(201).json({
+      message: `${req.body.channelTitle}님, 유튜버 등록이 완료되었습니다!`, //db.get(idx).channelTitle
+    });
+  } else res.status(400).json({ message: "channelTitle 작성 안함" });
 });
 
 app.delete("/youtubers/:id", (req, res) => {
@@ -56,26 +61,25 @@ app.delete("/youtubers/:id", (req, res) => {
   id = parseInt(id);
   let youtuber = db.get(id);
 
-  if (!youtuber)
-    res.json({ message: `요청하신 ${id}번은 없는 유튜버 입니다.` });
-  else {
+  if (youtuber) {
     const name = youtuber.channelTitle;
     db.delete(id);
     res.json({ message: `${name}님, 삭제되었습니다.` });
-  }
+  } else
+    res.status(404).json({ message: `요청하신 ${id}번은 없는 유튜버 입니다.` });
 });
 
 app.delete("/youtubers", (req, res) => {
-  let msg = "";
   if (db.size >= 1) {
     db.clear();
-    msg = "전체 유튜버가 삭제되었습니다.";
+    res.json({
+      message: "전체 유튜버가 삭제되었습니다.",
+    });
   } else {
-    msg = "삭제할 유튜버가 없습니다.";
+    res.status(404).json({
+      message: "삭제할 유튜버가 없습니다.",
+    });
   }
-  res.json({
-    message: msg,
-  });
 });
 
 app.put("/youtubers/:id", (req, res) => {
@@ -84,9 +88,7 @@ app.put("/youtubers/:id", (req, res) => {
   let youtuber = db.get(id);
   var oldTitle = youtuber.channelTitle;
 
-  if (!youtuber)
-    res.json({ message: `요청하신 ${id}번은 없는 유튜버 입니다.` });
-  else {
+  if (youtuber) {
     let newChannelTitle = req.body.channelTitle;
     youtuber.channelTitle = newChannelTitle;
     db.set(id, youtuber);
@@ -94,5 +96,6 @@ app.put("/youtubers/:id", (req, res) => {
     res.json({
       message: `${oldTitle}님, 채널명이 ${newChannelTitle}로 변경되었습니다`,
     });
-  }
+  } else
+    res.status(404).json({ message: `요청하신 ${id}번은 없는 유튜버 입니다.` });
 });
